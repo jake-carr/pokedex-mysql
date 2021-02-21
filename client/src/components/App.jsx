@@ -1,28 +1,93 @@
 import React from 'react';
+import axios from 'axios';
+import List from './List.jsx';
+import Insert from './Insert.jsx';
 
-const App = () => (
-  <div>
-    <h1>Fullstack Pokedex!</h1>
-    <button>Show All</button>
-    <select id="types">
-      <option>Sort by Type</option>
-      <option>Grass</option>
-      <option>Fire</option>
-      <option>Water</option>
-    </select>
-    <div>
-      <h3>Bulbasaur</h3>
-      <img src="http://vignette4.wikia.nocookie.net/nintendo/images/4/43/Bulbasaur.png/revision/latest?cb=20141002083518&path-prefix=en" />
-    </div>
-    <div>
-      <h3>Ivysaur</h3>
-      <img src="http://vignette3.wikia.nocookie.net/nintendo/images/8/86/Ivysaur.png/revision/latest?cb=20141002083450&path-prefix=en" />
-    </div>
-    <div>
-      <h3>Venusaur</h3>
-      <img src="http://vignette2.wikia.nocookie.net/nintendo/images/b/be/Venusaur.png/revision/latest?cb=20141002083423&path-prefix=en" />
-    </div>
-  </div>
-)
+export default class App extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      sort: '',
+      pokemon: [],
+      types: []
+    }
+    this.handleSelect = this.handleSelect.bind(this);
+    this.fetch = this.fetch.bind(this);
+  }
 
-export default App;
+  showAll() {
+    this.setState({sort: ''}, () => {
+      this.getPokemon()
+    })
+  }
+
+  handleSelect(e) {
+    this.setState({sort: e.target.value}, () => {
+      this.getPokemon()
+    })
+  }
+
+  sortBy(arr, type) {
+    return arr.filter(item => item.type === type)
+  }
+
+  getPokemon() {
+    axios.get('/api')
+      .then((result) => {
+        let array = result.data;
+        if (this.state.sort.length) {
+          let sortedArray = this.sortBy(array, this.state.sort);
+          this.setState({pokemon: sortedArray});
+        } else {
+          this.setState({pokemon: array})
+        }
+      })
+      .catch((err) => {
+        console.error(err)
+      })
+  }
+
+  getTypes() {
+    axios.get('/api/t')
+      .then((result) => {
+        let options = [];
+        for (let item of result.data) {
+          if (!options.includes(item.type)) {
+            options.push(item.type);
+          }
+        }
+        this.setState({types: options})
+      })
+  }
+
+  fetch() {
+    this.getPokemon();
+    this.getTypes();
+  }
+
+  componentDidMount() {
+    this.fetch()
+  }
+
+  renderTypeOptions() {
+    return this.state.types.map((type, i) => {
+      return <option key={i} value={type}>{type}</option>
+    })
+
+  }
+
+  render() {
+    return (
+      <div>
+        <h1>Fullstack Pokedex!</h1>
+        <Insert fetch={this.fetch} />
+        <button onClick={() => this.showAll()}>Show All</button>
+        <select id="types" onChange={this.handleSelect}>
+          <option>Sort by Type</option>
+          {this.renderTypeOptions()}
+        </select>
+        <List pokemons={this.state.pokemon} fetch={this.fetch} />
+      </div>
+    )
+  }
+}
